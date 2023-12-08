@@ -27,6 +27,10 @@ class JointEncoding(nn.Module):
         然后,为颜色color和深度sdf各创建一个2层的MLP网络,激活函数都是ReLU
         sdf:   最后输出维度为16, 即预测的SDF值(1维) + 特征向量h值(15维)
         color: 最后输出维度为3, 即预测的RGB值
+        通过执行该方法获取了以下属性：
+            self.decoder
+            self.color_net
+            self.sdf_net
         """
         self.get_decoder(config)
         
@@ -46,7 +50,7 @@ class JointEncoding(nn.Module):
         else:
             self.resolution_color = int(dim_max / self.config['grid']['voxel_color'])
         
-        print('SDF resolution:', self.resolution_sdf)
+        print('SDF resolution:', self.resolution_sdf)   # replica 为例，345
 
     # 对应 1.1 编码
     def get_encoding(self, config):
@@ -61,7 +65,8 @@ class JointEncoding(nn.Module):
         # Coordinate encoding
         self.embedpos_fn, self.input_ch_pos = get_encoder(config['pos']['enc'], n_bins=self.config['pos']['n_bins'])
 
-        # Sparse parametric encoding (SDF)
+        # get_encoder 返回【编码网格】和【网格输出的维度】，其中【网格输出维度】作为【神经网络的输入维度】
+        # Sparse parametric encoding (SDF) (replica为例)  'HashGrid' ↓                                        16 ↓                                   345 ↓
         self.embed_fn, self.input_ch = get_encoder(config['grid']['enc'], log2_hashmap_size=config['grid']['hash_size'], desired_resolution=self.resolution_sdf)
 
         # Sparse parametric encoding (Color)
@@ -72,7 +77,7 @@ class JointEncoding(nn.Module):
     # 对应 1.2 解码
     def get_decoder(self, config):
         '''
-        Get the decoder of the scene representation
+        Get the decoder of the scene representation 获取（创建）场景表达解码器
 
         以tum.yaml为例
         grid oneGrid: True
@@ -80,13 +85,13 @@ class JointEncoding(nn.Module):
 
         # 处理嵌入的空间位置和几何特征，以生成颜色和SDF值
         # ********************* 根据论文公式(2)(3)，处理嵌入的空间位置和几何特征，以生成颜色和SDF值*********************
-        if not self.config['grid']['oneGrid']:
+        if not self.config['grid']['oneGrid']:  # 没使用
             self.decoder = ColorSDFNet(config, input_ch=self.input_ch, input_ch_pos=self.input_ch_pos)
-        else:
+        else:   # TUM Azure iphone replica scannet synthetic
             self.decoder = ColorSDFNet_v2(config, input_ch=self.input_ch, input_ch_pos=self.input_ch_pos)
         
-        self.color_net = batchify(self.decoder.color_net, None)
-        self.sdf_net = batchify(self.decoder.sdf_net, None)
+        self.color_net = batchify(self.decoder.color_net, None) # 第二个参数是 None，直接将 self.decoder.color_net 作为返回
+        self.sdf_net = batchify(self.decoder.sdf_net, None)     # 第二个参数是 None，直接将 self.decoder.color_net 作为返回
 
     # 对应论文，将sdf值转成weights权重
     def sdf2weights(self, sdf, z_vals, args=None):
@@ -142,7 +147,7 @@ class JointEncoding(nn.Module):
 
         return rgb_map, disp_map, acc_map, weights, depth_map, depth_var
     
-    # 外部查询函数，在coslam.py中调用
+    # 外部查询 sdf 的函数，在coslam.py中调用
     def query_sdf(self, query_points, return_geo=False, embed=False):
         '''
         Get the SDF value of the query points
@@ -251,7 +256,7 @@ class JointEncoding(nn.Module):
             training n_range_d: 21
         '''
 
-        # -------------------- 2.1 && 3.2 Ray samping -------------------- 
+        # -------------------- Sec 2.1 && 3.2 Ray samping -------------------- 
         # A. 射线深度采样，确保深度为正值
         if target_d is not None:
             # 如果有目标深度 target_d，在目标深度附近取样
@@ -268,10 +273,11 @@ class JointEncoding(nn.Module):
                 z_vals, _ = torch.sort(torch.cat([z_vals, z_samples], -1), -1)
             else:
                 z_vals = z_samples
+        # B. 如果没有目标深度，或者设置了额外的采样深度 (n_samples_d)，则在相机的视野范围内进行均匀取样
         else:
             z_vals = torch.linspace(self.config['cam']['near'], self.config['cam']['far'], self.config['training']['n_samples']).to(rays_o)
             z_vals = z_vals[None, :].repeat(n_rays, 1) # [n_rays, n_samples]
-        # B. 如果没有目标深度，或者设置了额外的采样深度 (n_samples_d)，则在相机的视野范围内进行均匀取样
+        
 
         # C. 是否要进行深度扰动
         if self.config['training']['perturb'] > 0.:
@@ -302,8 +308,10 @@ class JointEncoding(nn.Module):
             rgb_map, disp_map, acc_map, weights, depth_map, depth_var = self.raw2outputs(raw, z_vals, self.config['training']['white_bkgd'])
 
         # F. Return rendering outputs, 返回一个字典，包含RGB图像、深度图、不透明度累积和深度方差等的结果
-        ret = {'rgb' : rgb_map, 'depth' :depth_map, 
-               'disp_map' : disp_map, 'acc_map' : acc_map, 
+        ret = {'rgb' : rgb_map, 
+               'depth' :depth_map, 
+               'disp_map' : disp_map, 
+               'acc_map' : acc_map, 
                'depth_var':depth_var,}
         ret = {**ret, 'z_vals': z_vals}
 

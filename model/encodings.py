@@ -15,15 +15,14 @@ def get_encoder(encoding, input_dim=3,
         per_level_scale = np.exp2(np.log2(desired_resolution  / base_resolution) / (n_levels - 1))
         embed = tcnn.Encoding(
             n_input_dims=input_dim,
-            encoding_config={
-                    "otype": "Grid",
-                    "type": "Dense",
-                    "n_levels": n_levels,
-                    "n_features_per_level": level_dim,
-                    "base_resolution": base_resolution,
-                    "per_level_scale": per_level_scale,
-                    "interpolation": "Linear"},
-                dtype=torch.float
+            encoding_config={"otype": "Grid",
+                             "type": "Dense",
+                             "n_levels": n_levels,
+                             "n_features_per_level": level_dim,
+                             "base_resolution": base_resolution,
+                             "per_level_scale": per_level_scale,
+                             "interpolation": "Linear"},
+            dtype=torch.float
         )
         out_dim = embed.n_output_dims
     
@@ -33,14 +32,12 @@ def get_encoder(encoding, input_dim=3,
         per_level_scale = np.exp2(np.log2(desired_resolution  / base_resolution) / (n_levels - 1))
         embed = tcnn.Encoding(
             n_input_dims=input_dim,
-            encoding_config={
-                "otype": 'HashGrid',
-                "n_levels": n_levels,
-                "n_features_per_level": level_dim,
-                "log2_hashmap_size": log2_hashmap_size,
-                "base_resolution": base_resolution,
-                "per_level_scale": per_level_scale
-            },
+            encoding_config={"otype": 'HashGrid',
+                             "n_levels": n_levels,
+                             "n_features_per_level": level_dim,
+                             "log2_hashmap_size": log2_hashmap_size,
+                             "base_resolution": base_resolution,
+                             "per_level_scale": per_level_scale},
             dtype=torch.float
         )
         out_dim = embed.n_output_dims
@@ -49,10 +46,8 @@ def get_encoder(encoding, input_dim=3,
     elif 'spherical' in encoding.lower():
         embed = tcnn.Encoding(
                 n_input_dims=input_dim,
-                encoding_config={
-                "otype": "SphericalHarmonics",
-                "degree": degree,
-                },
+                encoding_config={"otype": "SphericalHarmonics",
+                                 "degree": degree,},
                 dtype=torch.float
             )
         out_dim = embed.n_output_dims
@@ -62,10 +57,8 @@ def get_encoder(encoding, input_dim=3,
         print('Use blob')
         embed = tcnn.Encoding(
                 n_input_dims=input_dim,
-                encoding_config={
-                "otype": "OneBlob", #Component type.
-	            "n_bins": n_bins
-                },
+                encoding_config={"otype": "OneBlob", #Component type.
+                                 "n_bins": n_bins},
                 dtype=torch.float
             )
         out_dim = embed.n_output_dims
@@ -75,10 +68,8 @@ def get_encoder(encoding, input_dim=3,
         print('Use frequency')
         embed = tcnn.Encoding(
                 n_input_dims=input_dim,
-                encoding_config={
-                "otype": "Frequency", 
-                "n_frequencies": n_frequencies
-                },
+                encoding_config={"otype": "Frequency", 
+                                 "n_frequencies": n_frequencies},
                 dtype=torch.float
             )
         out_dim = embed.n_output_dims
@@ -87,9 +78,7 @@ def get_encoder(encoding, input_dim=3,
     elif 'identity' in encoding.lower():
         embed = tcnn.Encoding(
                 n_input_dims=input_dim,
-                encoding_config={
-                "otype": "Identity"
-                },
+                encoding_config={"otype": "Identity"},
                 dtype=torch.float
             )
         out_dim = embed.n_output_dims

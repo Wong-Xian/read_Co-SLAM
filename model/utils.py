@@ -67,8 +67,9 @@ def sample_pdf(bins, weights, N_importance, det=False, eps=1e-5):
 
     return samples
 
-def batchify(fn, chunk=1024*64):
-        """Constructs a version of 'fn' that applies to smaller batches.
+def batchify(fn, chunk=1024*64):# 这个函数的作用是将一个函数 fn 封装成一个可以处理批量数据的函数 ret。
+        """
+        Constructs a version of 'fn' that applies to smaller batches.
         """
         if chunk is None:
             return fn

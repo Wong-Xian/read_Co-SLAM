@@ -27,7 +27,7 @@ mapping:
   filter_depth: False
 
 tracking:
-  iter: 10
+  iter: 10  # tracking 过程的迭代次数
   sample: 1024
   pc_samples: 40960
   lr_rot: 0.001
@@ -99,5 +99,5 @@ mesh:
   vis: 500
   voxel_eval: 0.05
   voxel_final: 0.02
-  visualisation: False
+  visualisation: True
   

@@ -7,12 +7,12 @@ import tinycudann as tcnn
 class ColorNet(nn.Module):
     def __init__(self, config, input_ch=4, geo_feat_dim=15, 
                 hidden_dim_color=64, num_layers_color=3):
-        super(ColorNet, self).__init__()
+        super(ColorNet, self).__init__()    # 调用 nn.Module 的构造函数，传入子类构造函数的参数
         self.config = config
-        self.input_ch = input_ch
-        self.geo_feat_dim = geo_feat_dim
-        self.hidden_dim_color = hidden_dim_color
-        self.num_layers_color = num_layers_color
+        self.input_ch = input_ch                    # 默认 12
+        self.geo_feat_dim = geo_feat_dim            # 传入 15
+        self.hidden_dim_color = hidden_dim_color    # 传入 32
+        self.num_layers_color = num_layers_color    # 传入 2
 
         self.model = self.get_model(config['decoder']['tcnn_network'])
     
@@ -36,7 +36,7 @@ class ColorNet(nn.Module):
                 #dtype=torch.float
             )
 
-        color_net =  []
+        color_net =  [] # 最终要返回的
         for l in range(self.num_layers_color):
             if l == 0:
                 in_dim = self.input_ch + self.geo_feat_dim
@@ -56,13 +56,14 @@ class ColorNet(nn.Module):
 
 class SDFNet(nn.Module):
     def __init__(self, config, input_ch=3, geo_feat_dim=15, hidden_dim=64, num_layers=2):
-        super(SDFNet, self).__init__()
+        super(SDFNet, self).__init__()  # 调用 nn.Module 的构造函数，传入子类构造函数的参数
         self.config = config
-        self.input_ch = input_ch
-        self.geo_feat_dim = geo_feat_dim
-        self.hidden_dim = hidden_dim
-        self.num_layers = num_layers
+        self.input_ch = input_ch            # 在 ColorSDFNet_v2 调用时传入参数为 15
+        self.geo_feat_dim = geo_feat_dim    # 传入 15
+        self.hidden_dim = hidden_dim        # 传入 32
+        self.num_layers = num_layers        # 默认为 2，也就是 2 层 MLP
 
+        # 创建网络模型，参考 tcnn_network
         self.model = self.get_model(tcnn_network=config['decoder']['tcnn_network'])
     
     def forward(self, x, return_geo=True):
@@ -89,37 +90,46 @@ class SDFNet(nn.Module):
                 #dtype=torch.float
             )
         else:
-            sdf_net = []
-            for l in range(self.num_layers):
-                if l == 0:
-                    in_dim = self.input_ch
-                else:
-                    in_dim = self.hidden_dim 
+            sdf_net = []    # 最终要返回的 sdf 网络
+            '''
+            线性层1
+                in: 15      out: 32
+            线性层2
+                in: 32      out: 16
+            '''
+            for l in range(self.num_layers):    # l 为 0 和 1
+                # 配置输入维度
+                if l == 0:                      # 第 1 层时
+                    in_dim = self.input_ch      # 根据初始化传入的参数设置输入维度
+                else:                           # 第 2 层时
+                    in_dim = self.hidden_dim    # 输入维度设置为默认值 64
                 
-                if l == self.num_layers - 1:
-                    out_dim = 1 + self.geo_feat_dim # 1 sigma + 15 SH features for color
-                else:
-                    out_dim = self.hidden_dim 
+                # 配置输出维度
+                if l == self.num_layers - 1:        # 不是第一层
+                    out_dim = 1 + self.geo_feat_dim # 1 sdf值 + 15 几何特征 (论文中的 h)
+                else:                               # 第 1 层时
+                    out_dim = self.hidden_dim       # 默认值 64
                 
-                sdf_net.append(nn.Linear(in_dim, out_dim, bias=False))
-                if l != self.num_layers - 1:
+                sdf_net.append(nn.Linear(in_dim, out_dim, bias=False))  # 加入两个线性层
+                
+                if l != self.num_layers - 1:    # 在最后一层加入 ReLU 层
                     sdf_net.append(nn.ReLU(inplace=True))
 
-            return nn.Sequential(*nn.ModuleList(sdf_net))
+            return nn.Sequential(*nn.ModuleList(sdf_net))   # 构建网络并返回
 
-class ColorSDFNet(nn.Module):
+class ColorSDFNet(nn.Module):   # 未使用
     '''
     Color grid + SDF grid
     '''
     def __init__(self, config, input_ch=3, input_ch_pos=12):
         super(ColorSDFNet, self).__init__()
         self.config = config
-        self.color_net = ColorNet(config, 
+        self.color_net = ColorNet(config,           # 类实例化
                 input_ch=input_ch+input_ch_pos, 
                 geo_feat_dim=config['decoder']['geo_feat_dim'], 
                 hidden_dim_color=config['decoder']['hidden_dim_color'], 
                 num_layers_color=config['decoder']['num_layers_color'])
-        self.sdf_net = SDFNet(config,
+        self.sdf_net = SDFNet(config,               # 类实例化
                 input_ch=input_ch+input_ch_pos,
                 geo_feat_dim=config['decoder']['geo_feat_dim'],
                 hidden_dim=config['decoder']['hidden_dim'], 
@@ -141,23 +151,25 @@ class ColorSDFNet(nn.Module):
         
         return torch.cat([rgb, sdf], -1)
     
-class ColorSDFNet_v2(nn.Module):
+class ColorSDFNet_v2(nn.Module):    # TUM Replica Azure iPhone synthetic Scannet 均使用该类实例化
     '''
     No color grid
     '''
     def __init__(self, config, input_ch=3, input_ch_pos=12):
         super(ColorSDFNet_v2, self).__init__()
         self.config = config
-        self.color_net = ColorNet(config, 
-                input_ch=input_ch_pos, 
-                geo_feat_dim=config['decoder']['geo_feat_dim'], 
-                hidden_dim_color=config['decoder']['hidden_dim_color'], 
-                num_layers_color=config['decoder']['num_layers_color'])
-        self.sdf_net = SDFNet(config,
-                input_ch=input_ch+input_ch_pos,
-                geo_feat_dim=config['decoder']['geo_feat_dim'],
-                hidden_dim=config['decoder']['hidden_dim'], 
-                num_layers=config['decoder']['num_layers'])
+        self.color_net = ColorNet(
+            config,                     # 类实例化
+            input_ch=input_ch_pos,      # 默认 12
+            geo_feat_dim=config['decoder']['geo_feat_dim'],         # replica 15
+            hidden_dim_color=config['decoder']['hidden_dim_color'], # replica 32
+            num_layers_color=config['decoder']['num_layers_color']) # replica 2
+        self.sdf_net = SDFNet(
+            config,                             # 类实例化
+            input_ch=input_ch + input_ch_pos,   # 默认 3 + 12 = 15
+            geo_feat_dim=config['decoder']['geo_feat_dim'], # replica 15
+            hidden_dim=config['decoder']['hidden_dim'],     # replica 32
+            num_layers=config['decoder']['num_layers'])     # replica 2
             
     # 颜色信息是通过结合空间编码和几何特征来生成的，而不是直接从独立的颜色数据中提取(ColorSDFNet_v2的特点)
     def forward(self, embed, embed_pos):
