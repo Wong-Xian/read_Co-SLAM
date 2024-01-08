@@ -16,8 +16,11 @@ class JointEncoding(nn.Module):
         
         # ********************* 1.1 编码 *********************
         """
-        首先,从config中获得的联合编码方案: 1. parametric encoding用HashGrid 2. coordinate encoding用OneBlob
-        然后,通过tiny-cuda-nn实现任意方案的编码网络. 参考https://github.com/NVlabs/tiny-cuda-nn/blob/master/src/encoding.cu
+        首先,从config中获得的联合编码方案: 
+            1. parametric encoding用HashGrid 
+            2. coordinate encoding用OneBlob
+        然后,通过tiny-cuda-nn实现任意方案的编码网络. 
+        参考https://github.com/NVlabs/tiny-cuda-nn/blob/master/src/encoding.cu
         """
         self.get_encoding(config)
 
@@ -62,17 +65,22 @@ class JointEncoding(nn.Module):
         grid enc: 'HashGrid'
         grid oneGrid: 'True'
         '''
-        # Coordinate encoding
+        # 获取【位置编码网络】和【网络输出维度】，其中【网格输出维度】作为【预测网络的输入维度】
+        #                                      replica为例      'OneBlob' ↓                               16 ↓
         self.embedpos_fn, self.input_ch_pos = get_encoder(config['pos']['enc'], n_bins=self.config['pos']['n_bins'])
 
-        # get_encoder 返回【编码网格】和【网格输出的维度】，其中【网格输出维度】作为【神经网络的输入维度】
-        # Sparse parametric encoding (SDF) (replica为例)  'HashGrid' ↓                                        16 ↓                                   345 ↓
-        self.embed_fn, self.input_ch = get_encoder(config['grid']['enc'], log2_hashmap_size=config['grid']['hash_size'], desired_resolution=self.resolution_sdf)
+        # get_encoder 返回【编码网格】和【网格输出的维度】，其中【网格输出维度】作为【预测网络的输入维度】
+        # Sparse parametric encoding (SDF) (replica为例)
+        self.embed_fn, self.input_ch = get_encoder(config['grid']['enc'],                           # 'HashGrid'
+                                                   log2_hashmap_size=config['grid']['hash_size'],   # 16
+                                                   desired_resolution=self.resolution_sdf)          # 345
 
         # Sparse parametric encoding (Color)
         if not self.config['grid']['oneGrid']:
             print('Color resolution:', self.resolution_color)
-            self.embed_fn_color, self.input_ch_color = get_encoder(config['grid']['enc'], log2_hashmap_size=config['grid']['hash_size'], desired_resolution=self.resolution_color)
+            self.embed_fn_color, self.input_ch_color = get_encoder(config['grid']['enc'], 
+                                                                   log2_hashmap_size=config['grid']['hash_size'], 
+                                                                   desired_resolution=self.resolution_color)
 
     # 对应 1.2 解码
     def get_decoder(self, config):
@@ -112,7 +120,9 @@ class JointEncoding(nn.Module):
         inds = torch.argmax(mask, axis=1)
         inds = inds[..., None]
         z_min = torch.gather(z_vals, 1, inds) # The first surface
-        mask = torch.where(z_vals < z_min + args['data']['sc_factor'] * args['training']['trunc'], torch.ones_like(z_vals), torch.zeros_like(z_vals))
+        mask = torch.where(z_vals < z_min + args['data']['sc_factor'] * args['training']['trunc'], 
+                           torch.ones_like(z_vals), 
+                           torch.zeros_like(z_vals))
 
         weights = weights * mask
         return weights / (torch.sum(weights, axis=-1, keepdims=True) + 1e-8)
@@ -234,7 +244,9 @@ class JointEncoding(nn.Module):
         
         pts = rays_o[...,:] + normal[...,None,:] * z_vals[...,:,None] # [N_rays, N_samples, 3]
         raw = self.run_network(pts)
-        rgb, disp_map, acc_map, weights, depth_map, depth_var = self.raw2outputs(raw, z_vals, self.config['training']['white_bkgd'])
+        rgb, disp_map, acc_map, weights, depth_map, depth_var = self.raw2outputs(raw, 
+                                                                                 z_vals, 
+                                                                                 self.config['training']['white_bkgd'])
         return rgb
     
     # 内部函数，神经渲染流程的实现，用于处理光线并返回渲染结果，在forward()函数中被调用
@@ -261,7 +273,7 @@ class JointEncoding(nn.Module):
         if target_d is not None:
             # 如果有目标深度 target_d，在目标深度附近取样
             # 在深度[-range_d,range_d]范围内生成n_range_d个等间隔张量
-            z_samples = torch.linspace(-self.config['training']['range_d'], self.config['training']['range_d'], steps=self.config['training']['n_range_d']).to(target_d) 
+            z_samples = torch.linspace(-self.config['training']['range_d'], self.config['training']['range_d'], steps=self.config['training']['n_range_d']).to(target_d)
             z_samples = z_samples[None, :].repeat(n_rays, 1) + target_d
             # 将目标深度为负的那些取样点改为在深度near到far的范围内生成n_range_d个等间隔张量
             z_samples[target_d.squeeze()<=0] = torch.linspace(self.config['cam']['near'], self.config['cam']['far'], steps=self.config['training']['n_range_d']).to(target_d) 
