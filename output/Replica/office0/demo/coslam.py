@@ -182,8 +182,7 @@ class CoSLAM():
             # 1问.哪里相似？
             # 1答：射线的选择和构建很相似，self.select_samples像素随机选择，根据原点rays_o和方向rays_d构建射线
             # 2问：为什么相似？
-            # 2答：因为都要使用Ray Sampling，我们这里扩展 2.1 3.2 Ray Sampling的范畴，纯粹的光线采样
-            # 是定义在forward里的render_rays里的，但这里前置的步骤————像素的选择，射线构建，目标颜色值和深度值的获取，都是必不可少的
+            # 2答：因为都要使用Ray Sampling，我们这里扩展 2.1 3.2 Ray Sampling的范畴，纯粹的光线采样是定义在forward里的render_rays里的，但这里前置的步骤————像素的选择，射线构建，目标颜色值和深度值的获取，都是必不可少的
             self.map_optimizer.zero_grad()
             indice = self.select_samples(self.dataset.H, self.dataset.W, self.config['mapping']['sample'])
             # 返回的 indice 是 tensor 向量，其中有2048个数，每个数的范围从 0 ~ 816000 (680×1200)
@@ -200,10 +199,10 @@ class CoSLAM():
             rays_d = torch.sum(rays_d_cam[..., None, :] * c2w[:3, :3], -1)          # 相机指向的方向
 
             # Sec 3.2 Ray Sampling 藏在self.model.forward里
-            ret = self.model.forward(rays_o, rays_d, target_s, target_d)# 根据光线渲染图片
-            loss = self.get_loss_from_ret(ret)# 得到损失
-            loss.backward()# 计算梯度
-            self.map_optimizer.step()# 更新模型
+            ret = self.model.forward(rays_o, rays_d, target_s, target_d)
+            loss = self.get_loss_from_ret(ret)
+            loss.backward()
+            self.map_optimizer.step()
         
         # First frame will always be a keyframe
         # 第一帧很重要，肯定是关键帧，在NICE_SLAM里提到，第一帧来建立一个参考点，用于建立后续帧的相对位置和方向
@@ -619,8 +618,8 @@ class CoSLAM():
             if thresh >self.config['tracking']['wait_iters']:
                 break
 
-            loss.backward()         # 更新梯度
-            pose_optimizer.step()   # 更新网络参数
+            loss.backward()
+            pose_optimizer.step()
         '''
         tum.yaml
         tracking best: False      没有选最小的，个人猜测可能是出于实时性的考虑
@@ -634,8 +633,8 @@ class CoSLAM():
 
         # 对于非关键帧，保存相对于关键帧的姿态变换
         if frame_id % self.config['mapping']['keyframe_every'] != 0:        # 如果不是关键帧
-            kf_id = frame_id // self.config['mapping']['keyframe_every']    # 5个关键帧为一组，求组的索引值
-            kf_frame_id = kf_id * self.config['mapping']['keyframe_every']  # 上一个关键帧的索引值
+            kf_id = frame_id // self.config['mapping']['keyframe_every']    # 前帧所属的关键帧的索引，比如11//5=2 第11帧属于第2个的关键帧
+            kf_frame_id = kf_id * self.config['mapping']['keyframe_every']  # 关键帧id，比如2*5，第2个关键帧就是第10帧
             c2w_key = self.est_c2w_data[kf_frame_id]                        # 关键帧的估计位姿
             delta = self.est_c2w_data[frame_id] @ c2w_key.float().inverse() # 当前帧的T 乘上 关键帧的T^-1 得到两帧位姿之间的差异
             self.est_c2w_data_rel[frame_id] = delta                         # 保存 两帧之间的相对变化
@@ -646,14 +645,14 @@ class CoSLAM():
     def convert_relative_pose(self):
         poses = {}
         for i in range(len(self.est_c2w_data)):
-            if i % self.config['mapping']['keyframe_every'] == 0:   # 是关键帧的时候
-                poses[i] = self.est_c2w_data[i] # 估计的 c2w 就作为相对位姿
-            else:                                                   # 不是关键帧的时候
-                kf_id = i // self.config['mapping']['keyframe_every']# 每5个关键帧分一组，分组的索引值
-                kf_frame_id = kf_id * self.config['mapping']['keyframe_every']# 上一个关键帧的索引值
-                c2w_key = self.est_c2w_data[kf_frame_id]    # 取上一个关键帧的估计位姿
-                delta = self.est_c2w_data_rel[i]            # 取当前帧的变换矩阵
-                poses[i] = delta @ c2w_key                  # 计算当前位姿
+            if i % self.config['mapping']['keyframe_every'] == 0:
+                poses[i] = self.est_c2w_data[i]
+            else:
+                kf_id = i // self.config['mapping']['keyframe_every']
+                kf_frame_id = kf_id * self.config['mapping']['keyframe_every']
+                c2w_key = self.est_c2w_data[kf_frame_id]
+                delta = self.est_c2w_data_rel[i] 
+                poses[i] = delta @ c2w_key
         
         return poses
 
@@ -757,8 +756,8 @@ class CoSLAM():
                     print('add keyframe:',i)
             
                 #  -------------------- Evaluation -------------------- 
-                if i % self.config['mesh']['vis']==0:   # 每500帧保存一次
-                    self.save_mesh(i, voxel_size=self.config['mesh']['voxel_eval'])# 保存 .ply 文件
+                if i % self.config['mesh']['vis']==0:
+                    self.save_mesh(i, voxel_size=self.config['mesh']['voxel_eval'])
                     pose_relative = self.convert_relative_pose()
                     pose_evaluation(self.pose_gt, self.est_c2w_data, 1, os.path.join(self.config['data']['output'], self.config['data']['exp_name']), i)
                     pose_evaluation(self.pose_gt, pose_relative, 1, os.path.join(self.config['data']['output'], self.config['data']['exp_name']), i, img='pose_r', name='output_relative.txt')
@@ -774,16 +773,14 @@ class CoSLAM():
 
         model_savepath = os.path.join(self.config['data']['output'], self.config['data']['exp_name'], 'checkpoint{}.pt'.format(i)) 
         
-        self.save_ckpt(model_savepath)  # 保存模型参数和估计的位姿
-        self.save_mesh(i, voxel_size=self.config['mesh']['voxel_final'])# 保存三维场景到 .ply 文件
+        self.save_ckpt(model_savepath)
+        self.save_mesh(i, voxel_size=self.config['mesh']['voxel_final'])
         
-        pose_relative = self.convert_relative_pose()    # 获取每一帧的相对位姿
-
-        # 把 gt 与估计的位姿做评估
+        pose_relative = self.convert_relative_pose()
         pose_evaluation(self.pose_gt, self.est_c2w_data, 1, os.path.join(self.config['data']['output'], self.config['data']['exp_name']), i)
-        # 把 gt 与计算的相对位姿做评估
         pose_evaluation(self.pose_gt, pose_relative, 1, os.path.join(self.config['data']['output'], self.config['data']['exp_name']), i, img='pose_r', name='output_relative.txt')
 
+        #TODO: Evaluation of reconstruction
 
 # 主函数
 if __name__ == '__main__':

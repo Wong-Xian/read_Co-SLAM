@@ -223,7 +223,7 @@ class JointEncoding(nn.Module):
         if self.config['grid']['tcnn_encoding']:
             inputs_flat = (inputs_flat - self.bounding_box[:, 0]) / (self.bounding_box[:, 1] - self.bounding_box[:, 0])
 
-        outputs_flat = batchify(self.query_color_sdf, None)(inputs_flat)
+        outputs_flat = batchify(self.query_color_sdf, None)(inputs_flat)    # 对 inputs_flat 中的点批量调用 query_color_sdf 函数
         outputs = torch.reshape(outputs_flat, list(inputs.shape[:-1]) + [outputs_flat.shape[-1]])
 
         return outputs  # 返回采样点的 rgb 和 sdf 值

@@ -3,42 +3,35 @@ import yaml
 
 def load_config(path, default_path=None):
     """
-    Loads config file.
-    Args:
-        path (str): path to config file.
-        default_path (str, optional): whether to use default path. Defaults to None.
-    Returns:
-        cfg (dict): config dict.
+    加载 config 文件
+    参数：
+        path (str): config 文件的路径
+        default_path (str, 可选): 是否使用默认地址。默认无
+    返回值：
+        cfg: 字典数据类型
     """
-    # load configuration from file itself
-    with open(path, 'r') as f:
-        cfg_special = yaml.full_load(f)
 
-    # check if we should inherit from a config
-    inherit_from = cfg_special.get('inherit_from')
+    with open(path, 'r') as f:                      # 以读方式打开传入的参数 path
+        cfg_special = yaml.full_load(f)             # 用 yaml 库加载文件中的所有配置信息
 
-    # if yes, load this config first as default
-    # if no, use the default_path
-    if inherit_from is not None:
-        cfg = load_config(inherit_from, default_path)
-    elif default_path is not None:
+    inherit_from = cfg_special.get('inherit_from')  # 获取 inherit_from 信息
+
+    if inherit_from is not None:                    # 有 inherit_from 信息
+        cfg = load_config(inherit_from, default_path)# 加载父配置信息
+    elif default_path is not None:                  # 有 default_path
         with open(default_path, 'r') as f:
-            cfg = yaml.full_load(f)
+            cfg = yaml.full_load(f)                 # 加载 default_path 配置信息
     else:
         cfg = dict()
 
-    # include main configuration
-    update_recursive(cfg, cfg_special)
+    update_recursive(cfg, cfg_special)              # 把 cfg_special 合并到 cfg 中
 
     return cfg
 
 
 def update_recursive(dict1, dict2):
     """
-    Update two config dictionaries recursively.
-    Args:
-        dict1 (dict): first dictionary to be updated.
-        dict2 (dict): second dictionary which entries should be used.
+    把字典2中的数据合并到字典1中
     """
     for k, v in dict2.items():
         if k not in dict1:

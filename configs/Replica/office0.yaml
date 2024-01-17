@@ -5,7 +5,7 @@ mapping:
   
 
 data:
-  datadir: data/Replica/office0
+  datadir: ../Co-SLAM/data/Replica/office0
   trainskip: 1
   output: output/Replica/office0
   exp_name: demo

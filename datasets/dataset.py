@@ -11,7 +11,7 @@ from .utils import get_camera_rays, alphanum_key, as_intrinsics_matrix
 
 def get_dataset(config):
     '''
-    Get the dataset class from the config file.
+    根据传入的 config 实例化数据集对象
     '''
     if config['dataset'] == 'replica':
         dataset = ReplicaDataset
@@ -44,8 +44,7 @@ def get_dataset(config):
 class BaseDataset(Dataset):
     def __init__(self, cfg):
         self.png_depth_scale = cfg['cam']['png_depth_scale']
-        self.H, self.W = cfg['cam']['H']//cfg['data']['downsample'],\
-            cfg['cam']['W']//cfg['data']['downsample']
+        self.H, self.W = cfg['cam']['H']//cfg['data']['downsample'], cfg['cam']['W']//cfg['data']['downsample']
 
         self.fx, self.fy =  cfg['cam']['fx']//cfg['data']['downsample'],\
              cfg['cam']['fy']//cfg['data']['downsample']
@@ -57,8 +56,8 @@ class BaseDataset(Dataset):
         self.ignore_w = cfg['tracking']['ignore_edge_W']
         self.ignore_h = cfg['tracking']['ignore_edge_H']
 
-        self.total_pixels = (self.H - self.crop_size*2) * (self.W - self.crop_size*2)
-        self.num_rays_to_save = int(self.total_pixels * cfg['mapping']['n_pixels'])
+        self.total_pixels = (self.H - self.crop_size*2) * (self.W - self.crop_size*2)   # 裁去四边后的总像素数
+        self.num_rays_to_save = int(self.total_pixels * cfg['mapping']['n_pixels'])     # 用于当做 kf 的像素数
         
     
     def __len__(self):
@@ -198,7 +197,6 @@ class ReplicaDataset(BaseDataset):
         self.depth_paths = sorted(
             glob.glob(f'{self.basedir}/results/depth*.png'))
         self.load_poses(os.path.join(self.basedir, 'traj.txt'))
-        
 
         self.rays_d = None
         self.tracking_mask = None
