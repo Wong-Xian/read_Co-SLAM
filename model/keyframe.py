@@ -33,10 +33,11 @@ class KeyFrameDatabase(object):
             rays_valid = rays[valid_depth_mask, :]  # [n_valid, 7]
             num_valid = len(rays_valid)
             idxs = random.sample(range(0, num_valid), self.num_rays_to_save)
-
         else:
             raise NotImplementedError()
+
         rays = rays[:, idxs]
+
         return rays
 
     def attach_ids(self, frame_ids):
@@ -54,7 +55,7 @@ class KeyFrameDatabase(object):
         '''
         # batch direction (Bs=1, H*W, 3)
         rays = torch.cat([batch['direction'], batch['rgb'],
-                         batch['depth'][..., None]], dim=-1)
+                          batch['depth'][..., None]], dim=-1)
         rays = rays.reshape(1, -1, rays.shape[-1])
         # 对应框架图中 Sec (2.3 , 3.1) 中间的 Pixel Sampling 环节
         if filter_depth:
@@ -68,17 +69,17 @@ class KeyFrameDatabase(object):
         self.attach_ids(batch['frame_id'])
 
         # Store the rays
-        self.rays[len(self.frame_ids)-1] = rays
+        self.rays[len(self.frame_ids)-1] = rays # 添加光线（也就是添加关键字的过程）
 
     def sample_global_rays(self, bs):
         '''
         Sample rays from self.rays as well as frame_ids
         '''
-        num_kf = self.__len__()
-        # num_kf * self.num_rays_to_save 表示关键帧数量(num_kf) * 每个关键帧保存的光线数量(num_rays_to_save)，即所有可用于采样的光线总数
+        num_kf = self.__len__() #关键帧数量
+        # num_kf * self.num_rays_to_save 表示关键帧数量(num_kf) * 每个关键帧保存的光线数量(num_rays_to_save)，
+        # 即所有可用于采样的光线总数
         # 使用 random.sample 在所有保存的光线中随机选择 bs 个索引，bs的值传入的是2048
-        idxs = torch.tensor(random.sample(
-            range(num_kf * self.num_rays_to_save), bs))
+        idxs = torch.tensor(random.sample(range(num_kf * self.num_rays_to_save), bs))
         sample_rays = self.rays[:num_kf].reshape(-1, 7)[idxs]
 
         frame_ids = self.frame_ids[idxs//self.num_rays_to_save]

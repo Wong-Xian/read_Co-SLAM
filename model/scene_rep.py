@@ -186,7 +186,7 @@ class JointEncoding(nn.Module):
     
     # 外部查询函数，在coslam.py中调用
     def query_color(self, query_points):
-        return torch.sigmoid(self.query_color_sdf(query_points)[..., :3])
+        return torch.sigmoid(self.query_color_sdf(query_points)[..., :3])# 返回rgb值经过sigmoid函数的值
       
     # 外部查询函数，在coslam.py中调用
     def query_color_sdf(self, query_points):
@@ -200,12 +200,12 @@ class JointEncoding(nn.Module):
         '''
         inputs_flat = torch.reshape(query_points, [-1, query_points.shape[-1]])
 
-        embed = self.embed_fn(inputs_flat)
-        embe_pos = self.embedpos_fn(inputs_flat)
+        embed = self.embed_fn(inputs_flat)      # 把 inputs_flat 输入哈希编码网络，得到编码值
+        embe_pos = self.embedpos_fn(inputs_flat)# 把 inputs_flat 输入位置编码网络，得到编码值
         if not self.config['grid']['oneGrid']:
             embed_color = self.embed_fn_color(inputs_flat)
             return self.decoder(embed, embe_pos, embed_color)
-        return self.decoder(embed, embe_pos)
+        return self.decoder(embed, embe_pos)    # 调用解码网络，输入两个网络编码值，得到的rgb和sdf值用于返回
     
     # 内部函数
     def run_network(self, inputs):
@@ -226,7 +226,7 @@ class JointEncoding(nn.Module):
         outputs_flat = batchify(self.query_color_sdf, None)(inputs_flat)
         outputs = torch.reshape(outputs_flat, list(inputs.shape[:-1]) + [outputs_flat.shape[-1]])
 
-        return outputs
+        return outputs  # 返回采样点的 rgb 和 sdf 值
     
     # 外部函数，在coslam.py中调用
     def render_surface_color(self, rays_o, normal):
@@ -301,6 +301,7 @@ class JointEncoding(nn.Module):
         # D. 执行神经网络渲染
         pts = rays_o[...,None,:] + rays_d[...,None,:] * z_vals[...,:,None] # [N_rays, N_samples, 3]
         raw = self.run_network(pts)
+        
         # E. 将原始数据转换为具体的渲染结果，如RGB图像、深度图、不透明度累积和深度方差
         rgb_map, disp_map, acc_map, weights, depth_map, depth_var = self.raw2outputs(raw, z_vals, self.config['training']['white_bkgd'])
 
@@ -352,9 +353,13 @@ class JointEncoding(nn.Module):
              r r r tx
              r r r ty
              r r r tz
+        返回值：
+            字典，其中包含多个损失值
         '''
 
-        # 渲染函数，得到渲染的结果，传入参数是采样光线的起点和方向，以及深度值，传出的结果是一个字典，包含RGB图像、深度图、不透明度累积和深度方差等的结果
+        # 渲染函数，
+        # 传入参数是采样光线的起点和方向，以及深度值，
+        # 传出的结果是一个字典，包含RGB图像、深度图、不透明度累积和深度方差等的结果
         rend_dict = self.render_rays(rays_o, rays_d, target_d=target_d)
 
         # 非训练流程里，则直接返回
