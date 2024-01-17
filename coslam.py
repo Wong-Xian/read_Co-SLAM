@@ -784,9 +784,7 @@ if __name__ == '__main__':
 
     # ********************* 加载参数 *********************
     print('Start running...')
-    parser = argparse.ArgumentParser(
-        description='Arguments for running the NICE-SLAM/iMAP*.'
-    )
+    parser = argparse.ArgumentParser(description='Arguments for running the NICE-SLAM/iMAP*.')
     parser.add_argument('--config', type=str, help='Path to config file.')
     parser.add_argument('--input_folder', type=str,
                         help='input folder, this have higher priority, can overwrite the one in config file')
