@@ -666,7 +666,7 @@ class CoSLAM():
                                  'weight_decay': 1e-6, 
                                  'lr': self.config['mapping']['lr_decoder']},
 
-                                {'params': self.model.embed_fn.parameters(), 
+                                {'params': self.model.embed_fn.parameters(), # 哈希网格
                                  'eps': 1e-15, 
                                  'lr': self.config['mapping']['lr_embed']}]
     
@@ -694,12 +694,12 @@ class CoSLAM():
         else:
             color_func = self.model.query_color
         extract_mesh(self.model.query_sdf, 
-                        self.config, 
-                        self.bounding_box, 
-                        color_func=color_func, 
-                        marching_cube_bound=self.marching_cube_bound, 
-                        voxel_size=voxel_size, 
-                        mesh_savepath=mesh_savepath)      
+                     self.config, 
+                     self.bounding_box, 
+                     color_func=color_func, 
+                     marching_cube_bound=self.marching_cube_bound, 
+                     voxel_size=voxel_size, 
+                     mesh_savepath=mesh_savepath)      
         
     def run(self):
         # ********************* 创建map和BA的优化器 *********************
@@ -781,6 +781,7 @@ class CoSLAM():
 
         # 把 gt 与估计的位姿做评估
         pose_evaluation(self.pose_gt, self.est_c2w_data, 1, os.path.join(self.config['data']['output'], self.config['data']['exp_name']), i)
+        
         # 把 gt 与计算的相对位姿做评估
         pose_evaluation(self.pose_gt, pose_relative, 1, os.path.join(self.config['data']['output'], self.config['data']['exp_name']), i, img='pose_r', name='output_relative.txt')
 
