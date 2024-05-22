@@ -98,8 +98,8 @@ class JointEncoding(nn.Module):
         else:   # TUM Azure iphone replica scannet synthetic
             self.decoder = ColorSDFNet_v2(config, input_ch=self.input_ch, input_ch_pos=self.input_ch_pos)
         
-        self.color_net = batchify(self.decoder.color_net, None) # 第二个参数是 None，直接将 self.decoder.color_net 作为返回
-        self.sdf_net = batchify(self.decoder.sdf_net, None)     # 第二个参数是 None，直接将 self.decoder.color_net 作为返回
+        self.color_net = batchify(self.decoder.color_net, None) # 公式 3
+        self.sdf_net = batchify(self.decoder.sdf_net, None)     # 公式 2
 
     # 对应论文，将sdf值转成weights权重
     def sdf2weights(self, sdf, z_vals, args=None):
@@ -140,6 +140,8 @@ class JointEncoding(nn.Module):
             disp_map: [N_rays]
             acc_map: [N_rays]
             weights: [N_rays, N_samples]
+            depth_map: [N_rays]
+            depth_var: [N_rays]
         '''
         rgb = torch.sigmoid(raw[...,:3])  # [N_rays, N_samples, 3]
         weights = self.sdf2weights(raw[..., 3], z_vals, args=self.config)
@@ -175,7 +177,7 @@ class JointEncoding(nn.Module):
 
         embedded_pos = self.embedpos_fn(inputs_flat)
         out = self.sdf_net(torch.cat([embedded, embedded_pos], dim=-1))
-        sdf, geo_feat = out[..., :1], out[..., 1:]
+        sdf, geo_feat = out[..., :1], out[..., 1:]  # geo_feat 是几何特征，就是论文中公式2的 h 
 
         sdf = torch.reshape(sdf, list(query_points.shape[:-1]))
         if not return_geo:
@@ -249,7 +251,7 @@ class JointEncoding(nn.Module):
                                                                                  self.config['training']['white_bkgd'])
         return rgb
     
-    # 内部函数，神经渲染流程的实现，用于处理光线并返回渲染结果，在forward()函数中被调用
+    # 内部函数，光线渲染流程的实现，用于处理光线并返回渲染结果，在forward()函数中被调用
     def render_rays(self, rays_o, rays_d, target_d=None):
         '''
         Params:

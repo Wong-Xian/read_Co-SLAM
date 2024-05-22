@@ -130,7 +130,7 @@
         "vis": 500,
         "voxel_eval": 0.05,
         "voxel_final": 0.02,
-        "visualisation": true
+        "visualisation": false
     },
     "inherit_from": "configs/Replica/replica.yaml"
 }

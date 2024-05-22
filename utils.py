@@ -67,7 +67,7 @@ def get_batch_query_fn(query_fn, num_args=1, device=None):
 
 #### Neural RGBD ####       保存 .ply 文件的函数
 @torch.no_grad()
-def extract_mesh(query_fn, 
+def  extract_mesh(query_fn, 
                  config, 
                  bounding_box, 
                  marching_cube_bound=None, 

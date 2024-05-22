@@ -68,7 +68,7 @@ class KeyFrameDatabase(object):
 
         self.attach_ids(batch['frame_id'])
 
-        # Store the rays
+        # 保存光线
         self.rays[len(self.frame_ids)-1] = rays # 添加光线（也就是添加关键字的过程）
 
     def sample_global_rays(self, bs):
